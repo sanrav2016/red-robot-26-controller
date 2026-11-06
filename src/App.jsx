@@ -5,40 +5,6 @@ import Joystick from './Joystick'
 import Dpad from './Dpad'
 import XYAB from './XYAB'
 
-export function useViewportFix() {
-  useEffect(() => {
-    const fix = () => {
-      // reset any leftover scroll/viewport offset
-      window.scrollTo(0, 0);
-
-      // force WebKit to rebuild layers and hit-test regions
-      const root = document.getElementById('root') || document.body;
-      root.style.display = 'none';
-      void root.offsetHeight;        // force reflow
-      root.style.display = '';
-    };
-
-    // iOS settles the viewport late, so run it a few times
-    const run = () => {
-      [0, 150, 400].forEach(ms => setTimeout(fix, ms));
-    };
-
-    window.addEventListener('orientationchange', run);
-    window.addEventListener('resize', run);
-    document.addEventListener('fullscreenchange', run);
-    document.addEventListener('webkitfullscreenchange', run);
-    screen.orientation?.addEventListener('change', run);
-
-    return () => {
-      window.removeEventListener('orientationchange', run);
-      window.removeEventListener('resize', run);
-      document.removeEventListener('fullscreenchange', run);
-      document.removeEventListener('webkitfullscreenchange', run);
-      screen.orientation?.removeEventListener('change', run);
-    };
-  }, []);
-}
-
 function useLandscapeKey() {
   const mq = () => window.matchMedia('(orientation: landscape)').matches;
   const [landscape, setLandscape] = useState(mq);
@@ -56,7 +22,7 @@ function useLandscapeKey() {
         t = setTimeout(() => {
           setLandscape(true);
           setKey(k => k + 1);
-        }, 300);
+        }, 600);
       }
     };
     const onFs = () => {

@@ -1,0 +1,12 @@
+.ctrl-btn {
+  padding: 8px 16px 8px 16px;
+  border-radius: 16px;
+  background-color: #1f2937;
+  color: #fff;
+}
+
+button:active {
+  outline: none;
+  transition: box-shadow 0.2s ease-in-out;
+  filter: brightness(0.8);
+}

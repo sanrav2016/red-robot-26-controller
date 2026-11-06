@@ -139,8 +139,8 @@ function App() {
     const rawValue = e.target.value;
     const numericValue = rawValue.replace(/[^0-9]/g, '');
     setTeamNum(numericValue);
-    const num = parseInt(numericValue, 10); 
-    const formatted = String(num).padStart(2, '0'); 
+    const num = parseInt(numericValue, 10);
+    const formatted = String(num).padStart(2, '0');
     setTeamNumNumeric(numericValue);
   };
 

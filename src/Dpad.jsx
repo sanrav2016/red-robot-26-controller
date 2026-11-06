@@ -20,10 +20,9 @@ const Dpad = ({ writeToBle }) => {
           >
             <BiLeftArrow className="w-6 h-6 text-gray-600 pointer-events-none" />
           </button>
-          <button 
-            data-ble="DC"
+          <div 
             className="w-10 h-10 bg-gray-500 flex items-center justify-center border-2 border-gray-600 touch-none"
-          ></button>
+          ></div>
           <button 
             data-ble="DR"
             className="w-10 h-10 bg-gray-500 rounded-r-2xl flex items-center justify-center border-2 border-gray-600 touch-none"

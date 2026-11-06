@@ -26,6 +26,7 @@ function App() {
 
     try {
       const selectedDevice = await navigator.bluetooth.requestDevice({
+        acceptAllDevices: true,
         filters: [{ services: [SERVICE_UUID] }],
         optionalServices: [SERVICE_UUID]
       });
@@ -110,7 +111,7 @@ function App() {
             </button>
             <button className="ctrl-btn">❔</button>
           </div>
-          <span className={`text-center text-xs ${error != '' ? 'text-red-400' : 'text-gray-500'}`}>{error.includes('Web Bluetooth API') ? <span>Error: Web Bluetooth not available. <br />Try in Bluefy app (iOS) or Chrome (Android).</span> : error != '' ? "There was an error, please try again." : status}</span>
+          <span className={`text-center text-xs ${error != '' ? 'text-red-400' : 'text-gray-500'}`}>{error.includes('Web Bluetooth API') ? <span>Error: Web Bluetooth not available. <br />Try in Bluefy app (iOS) or Chrome (Android).</span> : error != '' ? error : status}</span>
         </div>
         <div className="flex w-full items-center gap-5 justify-between px-16">
           <div className="flex flex-1 items-center justify-start"><Joystick writeToBle={writeToBle} jid="J" /></div>

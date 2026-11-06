@@ -241,12 +241,12 @@ function App() {
           backgroundAttachment: 'fixed',
           backgroundPosition: 'center',
           backgroundRepeat: 'no-repeat',
-          backgroundSize: 'cover', // or 'cover' depending on your preference
+          backgroundSize: 'cover',
         }}></div>
-        <div className="absolute top-0 left-0 w-full h-full flex flex-col justify-center items-center gap-2 bg-slate-950">
+        <div className="absolute top-0 left-0 w-full h-full flex flex-col justify-center items-center gap-2">
           <span className="text-slate-300 text-md font-bold font-medium">{blePrefix}</span>
           <input
-            type="text"
+            type="number"
             placeholder="XXX"
             value={teamNum}
             onChange={e => setTeamNum(e.target.value)}

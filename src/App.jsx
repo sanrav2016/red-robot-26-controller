@@ -27,7 +27,6 @@ function App() {
     try {
       const selectedDevice = await navigator.bluetooth.requestDevice({
         acceptAllDevices: true,
-        filters: [{ services: [SERVICE_UUID] }],
         optionalServices: [SERVICE_UUID]
       });
       setStatus(`Connecting to ${selectedDevice.name || 'unknown device'}...`);

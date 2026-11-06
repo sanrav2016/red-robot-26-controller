@@ -1,9 +1,43 @@
-import { useState, useRef } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import './App.css'
 import favicon from './assets/favicon.png'
 import Joystick from './Joystick'
 import Dpad from './Dpad'
 import XYAB from './XYAB'
+
+export function useViewportFix() {
+  useEffect(() => {
+    const fix = () => {
+      // reset any leftover scroll/viewport offset
+      window.scrollTo(0, 0);
+
+      // force WebKit to rebuild layers and hit-test regions
+      const root = document.getElementById('root') || document.body;
+      root.style.display = 'none';
+      void root.offsetHeight;        // force reflow
+      root.style.display = '';
+    };
+
+    // iOS settles the viewport late, so run it a few times
+    const run = () => {
+      [0, 150, 400].forEach(ms => setTimeout(fix, ms));
+    };
+
+    window.addEventListener('orientationchange', run);
+    window.addEventListener('resize', run);
+    document.addEventListener('fullscreenchange', run);
+    document.addEventListener('webkitfullscreenchange', run);
+    screen.orientation?.addEventListener('change', run);
+
+    return () => {
+      window.removeEventListener('orientationchange', run);
+      window.removeEventListener('resize', run);
+      document.removeEventListener('fullscreenchange', run);
+      document.removeEventListener('webkitfullscreenchange', run);
+      screen.orientation?.removeEventListener('change', run);
+    };
+  }, []);
+}
 
 function App() {
   const deviceRef = useRef(null);
@@ -18,6 +52,8 @@ function App() {
   const SERVICE_UUID = "6e400001-b5a3-f393-e0a9-e50e24dcca9e";
   const CHARACTERISTIC_UUID_RX = "6e400002-b5a3-f393-e0a9-e50e24dcca9e";
   const CHARACTERISTIC_UUID_TX = "6e400003-b5a3-f393-e0a9-e50e24dcca9e";
+
+  useViewportFix();
 
   const connectBle = async () => {
     console.log('Requesting Bluetooth device...');

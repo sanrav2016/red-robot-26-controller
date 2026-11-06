@@ -134,6 +134,12 @@ function App() {
     screen.orientation?.lock?.('landscape').catch(() => { });  // works on some platforms only
   }, []);
 
+  const handleTeamNumChange = (e) => {
+    const rawValue = e.target.value;
+    const numericValue = rawValue.replace(/[^0-9]/g, '');
+    setTeamNum(numericValue);
+  };
+
   // Nordic UART service (NUS) UUIDs
   const SERVICE_UUID = "6e400001-b5a3-f393-e0a9-e50e24dcca9e";
   const CHARACTERISTIC_UUID_RX = "6e400002-b5a3-f393-e0a9-e50e24dcca9e";
@@ -169,7 +175,7 @@ function App() {
       setBleConnected(true);
       selectedDevice.addEventListener('gattserverdisconnected', onBleDisconnected);
     } catch (err) {
-      setError(err.message.includes('Web Bluetooth API') ? "Error: Web Bluetooth not available." : "There was an error, please try again.");
+      setError(!navigator.bluetooth || err.message.includes('Web Bluetooth API') ? "Error: Web Bluetooth not available." : "There was an error, please try again.");
       console.error(err.message);
       setStatus('Disconnected');
     }
@@ -246,10 +252,12 @@ function App() {
         <div className="absolute top-0 left-0 w-full h-full flex flex-col justify-center items-center gap-2">
           <span className="text-slate-300 text-md font-bold font-medium">{blePrefix}</span>
           <input
-            type="number"
-            placeholder="XXX"
+            type="text"
+            inputMode="numeric"
+            pattern="[0-9]*"
             value={teamNum}
-            onChange={e => setTeamNum(e.target.value)}
+            placeholder="XX"
+            onChange={handleTeamNumChange}
             className="w-18 py-3 px-4 text-base font-bold text-slate-200 bg-slate-900 border-[1.5px] border-slate-700 rounded-lg outline-none transition-all duration-200 ease-in-out shadow-sm text-center placeholder:text-slate-600 focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/15"
           />
         </div>
@@ -259,8 +267,8 @@ function App() {
               {bleConnected ? 'Disconnect' : 'Connect'}
             </button>
           </div>
-          <span className={`text-center text-xs ${(error != '' || !navigator.bluetooth) ? 'text-red-400' : 'text-gray-500'}`}>
-            {!navigator.bluetooth || error != '' ? error : status}
+          <span className={`text-center text-xs ${error != '' ? 'text-red-400' : 'text-gray-500'}`}>
+            {error != '' ? error : status}
           </span>
         </div>
         <div className="w-full max-w-4xl flex-1 flex flex-col items-center justify-around px-4 sm:px-10 py-2">

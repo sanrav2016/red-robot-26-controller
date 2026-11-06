@@ -35,7 +35,6 @@ export default function Joystick({ jid, writeToBle }) {
     let transformed_x = Math.round((x - 50) * 2);
     let transformed_y = Math.round((50 - y) * 2);
 
-    /*
     // throttle based on joystick speed
     const now = Date.now();
     const dt = now - lastTimeRef.current;
@@ -60,12 +59,7 @@ export default function Joystick({ jid, writeToBle }) {
 
       lastPosRef.current = { x, y };
       lastTimeRef.current = now;
-    }*/
-    
-    writeToBle(jid, [transformed_x, transformed_y]);
-
-    console.log({transformed_x, transformed_y});
-
+    }
    };
 
   const handlePointerUp = (e) => {

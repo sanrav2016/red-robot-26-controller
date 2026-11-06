@@ -5,8 +5,7 @@
   color: #fff;
 }
 
-button:focus-visible,
-button:active {
+.pressed {
   outline: none;
   transition: box-shadow 0.2s ease-in-out;
   filter: brightness(0.8);

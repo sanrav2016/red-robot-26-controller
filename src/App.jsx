@@ -22,7 +22,7 @@ function useLandscapeKey() {
         t = setTimeout(() => {
           setLandscape(true);
           setKey(k => k + 1);
-        }, 600);
+        }, 300);
       }
     };
     const onFs = () => {
@@ -48,6 +48,71 @@ function useLandscapeKey() {
   }, []);
 
   return { landscape, key };
+}
+
+export function useManualButtons(writeToBle) {
+  const writeRef = useRef(writeToBle);
+  writeRef.current = writeToBle;
+
+  useEffect(() => {
+    const active = new Map(); // pointerId -> element currently held
+
+    const hit = (x, y) => {
+      for (const el of document.querySelectorAll('[data-ble]')) {
+        const r = el.getBoundingClientRect();
+        if (x >= r.left && x <= r.right && y >= r.top && y <= r.bottom) return el;
+      }
+      return null;
+    };
+
+    const press = (el) => {
+      el.classList.add('pressed');
+      writeRef.current(el.dataset.ble, '1');
+    };
+    const release = (el) => {
+      el.classList.remove('pressed');
+      writeRef.current(el.dataset.ble, '0');
+    };
+
+    const down = (e) => {
+      const el = hit(e.clientX, e.clientY);
+      if (!el) return;
+      active.set(e.pointerId, el);
+      press(el);
+    };
+
+    const move = (e) => {
+      const prev = active.get(e.pointerId);
+      if (!prev) return;
+      const el = hit(e.clientX, e.clientY);
+      if (el === prev) return;
+      release(prev);
+      if (el) {
+        active.set(e.pointerId, el);
+        press(el);
+      } else {
+        active.delete(e.pointerId);
+      }
+    };
+
+    const up = (e) => {
+      const el = active.get(e.pointerId);
+      if (!el) return;
+      active.delete(e.pointerId);
+      release(el);
+    };
+
+    window.addEventListener('pointerdown', down, true);
+    window.addEventListener('pointermove', move, true);
+    window.addEventListener('pointerup', up, true);
+    window.addEventListener('pointercancel', up, true);
+    return () => {
+      window.removeEventListener('pointerdown', down, true);
+      window.removeEventListener('pointermove', move, true);
+      window.removeEventListener('pointerup', up, true);
+      window.removeEventListener('pointercancel', up, true);
+    };
+  }, []);
 }
 
 function App() {
@@ -112,6 +177,8 @@ function App() {
     }
     queueCommand(buffer);
   };
+
+  useManualButtons(writeToBle);
 
   const processQueue = async () => {
     if (!rxCharacteristicRef.current || isProcessingQueueRef.current || writeQueueRef.current.length === 0) return;

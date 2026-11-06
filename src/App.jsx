@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect } from 'react'
 import './App.css'
 import favicon from './assets/favicon.png'
+import bkg from './assets/background.png'
 import Joystick from './Joystick'
 import Dpad from './Dpad'
 import XYAB from './XYAB'
@@ -123,6 +124,9 @@ function App() {
   const [error, setError] = useState('');
   const writeQueueRef = useRef([]);
   const isProcessingQueueRef = useRef(false);
+  const [teamNum, setTeamNum] = useState(undefined);
+
+  const blePrefix = "RedRobot-Team";
 
   const { landscape, key } = useLandscapeKey();
 
@@ -140,11 +144,21 @@ function App() {
     setError('');
     setStatus('Requesting device...');
 
+    let requestObj = {
+      acceptAllDevices: true,
+      optionalServices: [SERVICE_UUID]
+    };
+
+    if (teamNum) requestObj = {
+      filters: [{
+        namePrefix: `${blePrefix}${teamNum}`,
+        services: [SERVICE_UUID]
+      }],
+      optionalServices: [SERVICE_UUID]
+    };
+
     try {
-      const selectedDevice = await navigator.bluetooth.requestDevice({
-        acceptAllDevices: true,
-        optionalServices: [SERVICE_UUID]
-      });
+      const selectedDevice = await navigator.bluetooth.requestDevice(requestObj);
       setStatus(`Connecting to ${selectedDevice.name || 'unknown device'}...`);
       deviceRef.current = selectedDevice;
       const server = await selectedDevice.gatt.connect();
@@ -155,13 +169,15 @@ function App() {
       setBleConnected(true);
       selectedDevice.addEventListener('gattserverdisconnected', onBleDisconnected);
     } catch (err) {
-      console.error('Bluetooth Error:', err);
-      setError(err.message || 'Failed to connect');
+      setError(err.message.includes('Web Bluetooth API') ? "Error: Web Bluetooth not available." : "There was an error, please try again.");
+      console.error(err.message);
       setStatus('Disconnected');
     }
   };
 
   const writeToBle = async (key, value) => {
+    // packet structure: 4 bytes
+    // ~ (char), then header (1-2 char), then payload (1-2 int8)
     const totalBytes = 1 + key.length + value.length;
     const buffer = new ArrayBuffer(totalBytes);
     const view = new DataView(buffer);
@@ -220,16 +236,31 @@ function App() {
     <div key={key}>
       <link rel="icon" type="image/png" href={favicon} />
       <div className="w-[100dvw] h-[100dvh] bg-gradient-to-l from-black to-gray-900 relative flex flex-col items-center justify-between overflow-hidden m-0 p-3 select-none touch-none">
-        <div className="absolute top-0 flex flex-col items-center justify-center shrink-0 z-20 pt-1">
+        <div className="opacity-5 blur-[2px] contrast-200 absolute top-0 left-0 w-full h-full" style={{
+          backgroundImage: `url(${bkg})`,
+          backgroundAttachment: 'fixed',
+          backgroundPosition: 'center',
+          backgroundRepeat: 'no-repeat',
+          backgroundSize: 'cover', // or 'cover' depending on your preference
+        }}></div>
+        <div className="absolute top-0 left-0 w-full h-full flex flex-col justify-center items-center gap-2 bg-slate-950">
+          <span className="text-slate-300 text-md font-bold font-medium">{blePrefix}</span>
+          <input
+            type="text"
+            placeholder="XXX"
+            value={teamNum}
+            onChange={e => setTeamNum(e.target.value)}
+            className="w-18 py-3 px-4 text-base font-bold text-slate-200 bg-slate-900 border-[1.5px] border-slate-700 rounded-lg outline-none transition-all duration-200 ease-in-out shadow-sm text-center placeholder:text-slate-600 focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/15"
+          />
+        </div>
+        <div className="absolute top-0 flex flex-col items-center justify-center shrink-0 z-20">
           <div className="flex items-center justify-center gap-3 z-10">
-            <button className="ctrl-btn">⚙️</button>
-            <button className="ctrl-btn" onClick={bleConnected ? disconnectBle : connectBle}>
+            <button className={`px-4 py-2 ${!bleConnected ? "bg-slate-800" : "bg-red-400"} text-white rounded-b-lg mb-1`} onClick={bleConnected ? disconnectBle : connectBle}>
               {bleConnected ? 'Disconnect' : 'Connect'}
             </button>
-            <button className="ctrl-btn">❔</button>
           </div>
           <span className={`text-center text-xs ${(error != '' || !navigator.bluetooth) ? 'text-red-400' : 'text-gray-500'}`}>
-            {!navigator.bluetooth || error.includes('Web Bluetooth API') ? <span>Error: Web Bluetooth not available. <br />Try in Bluefy app (iOS) or Chrome (Android).</span> : error != '' ? error : status}
+            {!navigator.bluetooth || error != '' ? error : status}
           </span>
         </div>
         <div className="w-full max-w-4xl flex-1 flex flex-col items-center justify-around px-4 sm:px-10 py-2">
@@ -241,7 +272,7 @@ function App() {
               <XYAB writeToBle={writeToBle} />
             </div>
           </div>
-          <div className="w-full flex items-center justify-between">
+          <div className="w-full flex items-center justify-between px-[10dvw]">
             <div className="flex items-center justify-start shrink-0 scale-90 sm:scale-100">
               <Dpad writeToBle={writeToBle} />
             </div>

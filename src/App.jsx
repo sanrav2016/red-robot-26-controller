@@ -101,8 +101,8 @@ function App() {
   return (
     <>
       <link rel="icon" type="image/png" href={favicon} />
-      <div className="w-screen h-screen bg-gradient-to-l from-black to-gray-900 relative flex flex-col items-center justify-center">
-        <div className="absolute top-0 left-0 w-full p-2 flex flex-col justify-center items-center gap-1">
+      <div className="w-[100dvw] h-[100dvh] bg-gradient-to-l from-black to-gray-900 relative flex flex-col items-center justify-between overflow-hidden m-0 p-3 select-none touch-none">
+        <div className="absolute top-0 flex flex-col items-center justify-center shrink-0 z-20 pt-1">
           <div className="flex items-center justify-center gap-3 z-10">
             <button className="ctrl-btn">⚙️</button>
             <button className="ctrl-btn" onClick={bleConnected ? disconnectBle : connectBle}>
@@ -110,18 +110,29 @@ function App() {
             </button>
             <button className="ctrl-btn">❔</button>
           </div>
-          <span className={`text-center text-xs ${error != '' ? 'text-red-400' : 'text-gray-500'}`}>{error.includes('Web Bluetooth API') ? <span>Error: Web Bluetooth not available. <br />Try in Bluefy app (iOS) or Chrome (Android).</span> : error != '' ? error : status}</span>
+          <span className={`text-center text-xs ${(error != '' || !navigator.bluetooth) ? 'text-red-400' : 'text-gray-500'}`}>
+            {!navigator.bluetooth || error.includes('Web Bluetooth API') ? <span>Error: Web Bluetooth not available. <br />Try in Bluefy app (iOS) or Chrome (Android).</span> : error != '' ? error : status}
+          </span>
         </div>
-        <div className="flex w-full items-center gap-5 justify-between px-16">
-          <div className="flex flex-1 items-center justify-start"><Joystick writeToBle={writeToBle} jid="J" /></div>
-          <img src={favicon} alt="Red Robot" className="w-16 h-16 brightness-0 invert" />
-          <div className="flex flex-1 items-center justify-end"><XYAB writeToBle={writeToBle} /></div>
+        <div className="w-full max-w-4xl flex-1 flex flex-col items-center justify-around px-4 sm:px-10 py-2">
+          <div className="w-full flex items-center justify-between">
+            <div className="flex items-center justify-start shrink-0 scale-90 sm:scale-100">
+              <Joystick writeToBle={writeToBle} jid="J" />
+            </div>
+            <div className="flex items-center justify-end shrink-0 scale-90 sm:scale-100">
+              <XYAB writeToBle={writeToBle} />
+            </div>
+          </div>
+          <div className="w-full flex items-center justify-between">
+            <div className="flex items-center justify-start shrink-0 scale-90 sm:scale-100">
+              <Dpad writeToBle={writeToBle} />
+            </div>
+            <div className="flex items-center justify-end shrink-0 scale-90 sm:scale-100">
+              <Joystick writeToBle={writeToBle} jid="I" />
+            </div>
+          </div>
         </div>
-        <div className="flex w-full items-center gap-[20%] justify-center">
-          <Dpad writeToBle={writeToBle} />
-          <Joystick writeToBle={writeToBle} jid="I" />
-        </div>
-      </div >
+      </div>
     </>
   )
 }

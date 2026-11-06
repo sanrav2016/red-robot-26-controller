@@ -125,8 +125,9 @@ function App() {
   const writeQueueRef = useRef([]);
   const isProcessingQueueRef = useRef(false);
   const [teamNum, setTeamNum] = useState(undefined);
+  const [teamNumNumeric, setTeamNumNumeric] = useState(0);
 
-  const blePrefix = "RedRobot-Team";
+  const blePrefix = "RR-";
 
   const { landscape, key } = useLandscapeKey();
 
@@ -138,6 +139,9 @@ function App() {
     const rawValue = e.target.value;
     const numericValue = rawValue.replace(/[^0-9]/g, '');
     setTeamNum(numericValue);
+    const num = parseInt(numericValue, 10); 
+    const formatted = String(num).padStart(2, '0'); 
+    setTeamNumNumeric(numericValue);
   };
 
   // Nordic UART service (NUS) UUIDs
@@ -155,9 +159,9 @@ function App() {
       optionalServices: [SERVICE_UUID]
     };
 
-    if (teamNum) requestObj = {
+    if (teamNum & teamNumNumeric != NaN) requestObj = {
       filters: [{
-        namePrefix: `${blePrefix}${teamNum}`,
+        namePrefix: `${blePrefix}${teamNumNumeric}`,
         services: [SERVICE_UUID]
       }],
       optionalServices: [SERVICE_UUID]
@@ -241,7 +245,7 @@ function App() {
   return landscape ? (
     <div key={key}>
       <link rel="icon" type="image/png" href={favicon} />
-      <div className="w-[100dvw] h-[100dvh] bg-gradient-to-l from-black to-gray-900 relative flex flex-col items-center justify-between overflow-hidden m-0 p-3 select-none touch-none">
+      <div className="w-[100dvw] h-[100dvh] bg-gradient-to-l from-black to-gray-900 relative flex flex-col items-center justify-between overflow-hidden m-0 p-3 select-none touch-none">"
         <div className="opacity-5 blur-[2px] contrast-200 absolute top-0 left-0 w-full h-full" style={{
           backgroundImage: `url(${bkg})`,
           backgroundAttachment: 'fixed',

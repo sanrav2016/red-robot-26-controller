@@ -39,6 +39,51 @@ export function useViewportFix() {
   }, []);
 }
 
+function useLandscapeKey() {
+  const mq = () => window.matchMedia('(orientation: landscape)').matches;
+  const [landscape, setLandscape] = useState(mq);
+  const [key, setKey] = useState(0);
+
+  useEffect(() => {
+    let t;
+    const update = () => {
+      clearTimeout(t);
+      const next = mq();
+      if (!next) {
+        setLandscape(false);              // unmount immediately in portrait
+      } else {
+        // wait for iOS to settle the viewport, then mount fresh
+        t = setTimeout(() => {
+          setLandscape(true);
+          setKey(k => k + 1);
+        }, 300);
+      }
+    };
+    const onFs = () => {
+      // fullscreen toggle: tear down and remount too
+      setLandscape(false);
+      clearTimeout(t);
+      t = setTimeout(() => {
+        setLandscape(mq());
+        setKey(k => k + 1);
+      }, 300);
+    };
+
+    const m = window.matchMedia('(orientation: landscape)');
+    m.addEventListener('change', update);
+    document.addEventListener('fullscreenchange', onFs);
+    document.addEventListener('webkitfullscreenchange', onFs);
+    return () => {
+      clearTimeout(t);
+      m.removeEventListener('change', update);
+      document.removeEventListener('fullscreenchange', onFs);
+      document.removeEventListener('webkitfullscreenchange', onFs);
+    };
+  }, []);
+
+  return { landscape, key };
+}
+
 function App() {
   const deviceRef = useRef(null);
   const rxCharacteristicRef = useRef(null);
@@ -48,12 +93,16 @@ function App() {
   const writeQueueRef = useRef([]);
   const isProcessingQueueRef = useRef(false);
 
+  const { landscape, key } = useLandscapeKey();
+
+  useEffect(() => {
+    screen.orientation?.lock?.('landscape').catch(() => { });  // works on some platforms only
+  }, []);
+
   // Nordic UART service (NUS) UUIDs
   const SERVICE_UUID = "6e400001-b5a3-f393-e0a9-e50e24dcca9e";
   const CHARACTERISTIC_UUID_RX = "6e400002-b5a3-f393-e0a9-e50e24dcca9e";
   const CHARACTERISTIC_UUID_TX = "6e400003-b5a3-f393-e0a9-e50e24dcca9e";
-
-  useViewportFix();
 
   const connectBle = async () => {
     console.log('Requesting Bluetooth device...');
@@ -134,8 +183,8 @@ function App() {
     }
   };
 
-  return (
-    <>
+  return landscape ? (
+    <div key={key}>
       <link rel="icon" type="image/png" href={favicon} />
       <div className="w-[100dvw] h-[100dvh] bg-gradient-to-l from-black to-gray-900 relative flex flex-col items-center justify-between overflow-hidden m-0 p-3 select-none touch-none">
         <div className="absolute top-0 flex flex-col items-center justify-center shrink-0 z-20 pt-1">
@@ -169,8 +218,10 @@ function App() {
           </div>
         </div>
       </div>
-    </>
-  )
+    </div>
+  ) : <div className="fixed inset-0 flex items-center justify-center bg-black text-gray-400">
+    Rotate your device to landscape
+  </div>
 }
 
 export default App

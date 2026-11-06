@@ -26,4 +26,5 @@ body,
   user-select: none;
   /* Standard syntax */
   touch-action: manipulation;
+  inset: 0;
 }

@@ -246,10 +246,12 @@ function App() {
       optionalServices: [SERVICE_UUID]
     };
 
+    console.log(`${blePrefix}${teamNumNumeric}`)
+
     if (teamNum && teamNumNumeric != NaN) requestObj = {
       filters: [{
-        namePrefix: `${blePrefix}${teamNumNumeric}`,
-        services: [SERVICE_UUID]
+        namePrefix: `${blePrefix}${teamNumNumeric}`//,
+        //services: [SERVICE_UUID]
       }],
       optionalServices: [SERVICE_UUID]
     };

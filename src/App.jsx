@@ -248,13 +248,25 @@ function App() {
 
     console.log(`${blePrefix}${teamNumNumeric}`)
 
-    if (teamNum && teamNumNumeric != NaN) requestObj = {
-      filters: [{
-        namePrefix: `${blePrefix}${teamNumNumeric}`//,
-        //services: [SERVICE_UUID]
-      }],
-      optionalServices: [SERVICE_UUID]
-    };
+    if (teamNum && teamNumNumeric != NaN) {
+      // iOS Bluefy only filters with namePrefix but breaks on Android
+      // Android can have service filter but breaks on iOS
+      // LOLOLOLOLOL
+      const isIOS =
+        /iPad|iPhone|iPod/.test(navigator.userAgent) ||
+        (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+
+      const prefix = `${blePrefix}${teamNumNumeric}`;
+
+      const requestObj = {
+        filters: [
+          isIOS
+            ? { namePrefix: prefix } // Bluefy: name only
+            : { namePrefix: prefix, services: [SERVICE_UUID] }, // Chrome: name and service
+        ],
+        optionalServices: [SERVICE_UUID],
+      };
+    }
 
     try {
       const selectedDevice = await navigator.bluetooth.requestDevice(requestObj);

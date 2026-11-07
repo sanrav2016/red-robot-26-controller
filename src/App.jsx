@@ -258,7 +258,7 @@ function App() {
 
       const prefix = `${blePrefix}${teamNumNumeric}`;
 
-      const requestObj = {
+      requestObj = {
         filters: [
           isIOS
             ? { namePrefix: prefix } // Bluefy: name only

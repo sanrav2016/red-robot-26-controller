@@ -1,6 +1,5 @@
 import { useState, useRef, useEffect } from 'react'
 import './App.css'
-import favicon from './assets/favicon.png'
 import bkg from './assets/background.png'
 import Joystick from './Joystick'
 import Dpad from './Dpad'
@@ -244,7 +243,6 @@ function App() {
 
   return landscape ? (
     <div key={key}>
-      <link rel="icon" type="image/png" href={favicon} />
       <div className="w-[100dvw] h-[100dvh] bg-gradient-to-l from-black to-gray-900 relative flex flex-col items-center justify-between overflow-hidden m-0 p-3 select-none touch-none">"
         <div className="opacity-5 blur-[2px] contrast-200 absolute top-0 left-0 w-full h-full" style={{
           backgroundImage: `url(${bkg})`,

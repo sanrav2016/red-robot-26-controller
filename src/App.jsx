@@ -115,6 +115,12 @@ export function useManualButtons(writeToBle) {
   }, []);
 }
 
+const LS_ID = 'rr-last-device-id';
+const LS_TEAM = 'rr-team-num';
+const lsGet = (k) => { try { return localStorage.getItem(k); } catch { return null; } };
+const lsSet = (k, v) => { try { localStorage.setItem(k, v); } catch { /* ignore */ } };
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+
 function App() {
   const deviceRef = useRef(null);
   const rxCharacteristicRef = useRef(null);
@@ -123,8 +129,11 @@ function App() {
   const [error, setError] = useState('');
   const writeQueueRef = useRef([]);
   const isProcessingQueueRef = useRef(false);
-  const [teamNum, setTeamNum] = useState(undefined);
-  const [teamNumNumeric, setTeamNumNumeric] = useState(0);
+  const [teamNum, setTeamNum] = useState(() => lsGet(LS_TEAM) || undefined);
+  const [teamNumNumeric, setTeamNumNumeric] = useState(() => lsGet(LS_TEAM) || 0);
+  const manualDisconnectRef = useRef(false);   // true after the user taps Disconnect
+  const busyRef = useRef(false);               // a connect attempt is in flight
+  const connectedRef = useRef(false);
 
   const blePrefix = "RR-";
 
@@ -141,6 +150,7 @@ function App() {
     const num = parseInt(numericValue, 10);
     const formatted = String(num).padStart(2, '0');
     setTeamNumNumeric(numericValue);
+    lsSet(LS_TEAM, numericValue);
   };
 
   // Nordic UART service (NUS) UUIDs
@@ -148,8 +158,86 @@ function App() {
   const CHARACTERISTIC_UUID_RX = "6e400002-b5a3-f393-e0a9-e50e24dcca9e";
   const CHARACTERISTIC_UUID_TX = "6e400003-b5a3-f393-e0a9-e50e24dcca9e";
 
+  // Stable listener identity so we never stack duplicate disconnect handlers.
+  const disconnectHandlerRef = useRef(null);
+  const stableDisconnect = useRef((e) => disconnectHandlerRef.current?.(e)).current;
+
+  const connectToDevice = async (device) => {
+    setStatus(`Connecting to ${device.name || 'unknown device'}...`);
+    deviceRef.current = device;
+    device.removeEventListener('gattserverdisconnected', stableDisconnect);
+    device.addEventListener('gattserverdisconnected', stableDisconnect);
+    const server = await device.gatt.connect();
+    const service = await server.getPrimaryService(SERVICE_UUID);
+    rxCharacteristicRef.current = await service.getCharacteristic(CHARACTERISTIC_UUID_RX);
+    lsSet(LS_ID, device.id);
+    connectedRef.current = true;
+    setError('');
+    setStatus('Connected to ' + (device.name || 'unknown device'));
+    setBleConnected(true);
+  };
+
+  // Retry quietly (no chooser, no user gesture needed).
+  const reconnect = async (device, attempts = 6) => {
+    if (busyRef.current) return false;
+    busyRef.current = true;
+    try {
+      for (let i = 0; i < attempts; i++) {
+        if (manualDisconnectRef.current || connectedRef.current) return false;
+        try {
+          await connectToDevice(device);
+          return true;
+        } catch (err) {
+          console.warn('Reconnect attempt failed:', err.message);
+          setStatus(`Reconnecting to ${device.name || 'robot'}... (${i + 1}/${attempts})`);
+          await sleep(1000 * (i + 1));
+        }
+      }
+      setStatus('Disconnected');
+      return false;
+    } finally {
+      busyRef.current = false;
+    }
+  };
+
+  // On launch / return to foreground: reconnect to a robot this browser already has permission for.
+  // Needs navigator.bluetooth.getDevices(); silently does nothing where that's unsupported.
+  const autoConnect = async () => {
+    if (connectedRef.current || busyRef.current || manualDisconnectRef.current) return;
+    if (!navigator.bluetooth?.getDevices) return;
+    try {
+      const devices = await navigator.bluetooth.getDevices();
+      const savedId = lsGet(LS_ID);
+      const prefix = teamNumNumeric ? `${blePrefix}${teamNumNumeric}` : null;
+      const dev =
+        devices.find((d) => d.id === savedId) ??
+        (prefix ? devices.find((d) => d.name?.startsWith(prefix)) : undefined);
+      if (!dev) return;
+
+      if (typeof dev.watchAdvertisements === 'function') {
+        // Wait until the robot is actually advertising, then connect.
+        setStatus(`Looking for ${dev.name || 'robot'}...`);
+        const ac = new AbortController();
+        dev.addEventListener('advertisementreceived', () => {
+          ac.abort();
+          reconnect(dev);
+        }, { once: true });
+        try {
+          await dev.watchAdvertisements({ signal: ac.signal });
+        } catch {
+          reconnect(dev);   // watching not allowed -> just try to connect
+        }
+      } else {
+        reconnect(dev);
+      }
+    } catch (err) {
+      console.warn('Auto-connect unavailable:', err.message);
+    }
+  };
+
   const connectBle = async () => {
     console.log('Requesting Bluetooth device...');
+    manualDisconnectRef.current = false;
     setError('');
     setStatus('Requesting device...');
 
@@ -168,15 +256,7 @@ function App() {
 
     try {
       const selectedDevice = await navigator.bluetooth.requestDevice(requestObj);
-      setStatus(`Connecting to ${selectedDevice.name || 'unknown device'}...`);
-      deviceRef.current = selectedDevice;
-      const server = await selectedDevice.gatt.connect();
-      const service = await server.getPrimaryService(SERVICE_UUID);
-      const rxCharacteristic = await service.getCharacteristic(CHARACTERISTIC_UUID_RX);
-      rxCharacteristicRef.current = rxCharacteristic;
-      setStatus('Connected to ' + (selectedDevice.name || 'unknown device'));
-      setBleConnected(true);
-      selectedDevice.addEventListener('gattserverdisconnected', onBleDisconnected);
+      await connectToDevice(selectedDevice);
     } catch (err) {
       setError(!navigator.bluetooth || err.message.includes('Web Bluetooth API') ? "Error: Web Bluetooth not available." : "There was an error, please try again.");
       console.error(err.message);
@@ -230,16 +310,28 @@ function App() {
   const onBleDisconnected = (event) => {
     const dev = event.target;
     setStatus(`Disconnected from ${dev.name || 'unknown device'}`);
-    deviceRef.current = null;
     rxCharacteristicRef.current = null;
+    connectedRef.current = false;
     setBleConnected(false);
+    // Dropped unexpectedly (out of range, robot reset, app backgrounded): try to get back.
+    if (!manualDisconnectRef.current) reconnect(dev);
   };
+  disconnectHandlerRef.current = onBleDisconnected;
 
   const disconnectBle = () => {
+    manualDisconnectRef.current = true;
     if (deviceRef.current && deviceRef.current.gatt.connected) {
       deviceRef.current.gatt.disconnect();
     }
   };
+
+  useEffect(() => {
+    autoConnect();
+    const onVisible = () => { if (document.visibilityState === 'visible') autoConnect(); };
+    document.addEventListener('visibilitychange', onVisible);
+    return () => document.removeEventListener('visibilitychange', onVisible);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   return landscape ? (
     <div key={key}>

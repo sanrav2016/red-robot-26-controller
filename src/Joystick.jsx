@@ -1,9 +1,11 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useContext } from 'react';
+import { RotationContext } from './rotation';
 
 export default function Joystick({ jid, writeToBle }) {
   const [position, setPosition] = useState({ x: 50, y: 50 });
   const [isDragging, setIsDragging] = useState(false);
   const containerRef = useRef(null);
+  const rot = useContext(RotationContext);
   const lastPosRef = useRef({ x: 50, y: 50 });
   const lastTimeRef = useRef(Date.now());
   const lastSentTimeRef = useRef(0);
@@ -23,8 +25,15 @@ export default function Joystick({ jid, writeToBle }) {
     if (!containerRef.current) return;
     const rect = containerRef.current.getBoundingClientRect();
 
-    let x = ((e.clientX - rect.left) / rect.width) * 100;
-    let y = ((e.clientY - rect.top) / rect.height) * 100;
+    // Pointer offset from the joystick centre, in screen space.
+    let ox = e.clientX - (rect.left + rect.width / 2);
+    let oy = e.clientY - (rect.top + rect.height / 2);
+    // Convert to the joystick's own (rotated) axes.
+    if (rot === 90) [ox, oy] = [oy, -ox];
+    else if (rot === -90) [ox, oy] = [-oy, ox];
+
+    let x = 50 + (ox / rect.width) * 100;
+    let y = 50 + (oy / rect.height) * 100;
 
     x = Math.max(0, Math.min(100, x));
     y = Math.max(0, Math.min(100, y));

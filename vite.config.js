@@ -17,7 +17,7 @@ export default defineConfig({
         description: 'Bluetooth gamepad for Red Robot 2026 robots',
         display: 'fullscreen',
         display_override: ['fullscreen', 'standalone'],
-        orientation: 'landscape',
+        orientation: 'portrait',
         background_color: '#000000',
         theme_color: '#000000',
         icons: [

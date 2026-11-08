@@ -151,13 +151,14 @@ function App() {
   const writeFailuresRef = useRef(0);
   const lastFailureAtRef = useRef(0);
   const [teamNum, setTeamNum] = useState(() => lsGet(LS_TEAM) || undefined);
-  const [teamNumNumeric, setTeamNumNumeric] = useState(() => lsGet(LS_TEAM) || 0);
+  const [teamNumNumeric, setTeamNumNumeric] = useState(() => lsGet(LS_TEAM) || '');
   const manualDisconnectRef = useRef(false);   // true after the user taps Disconnect / Cancel
   const busyRef = useRef(false);               // a reconnect loop is running
   const connectedRef = useRef(false);
   const genRef = useRef(0);                    // bumped to cancel an in-flight reconnect loop
   const stopWatchRef = useRef(null);           // tears down a pending "wait for advertisement"
   const errorTimerRef = useRef(null);
+  const requestIdRef = useRef(0);
 
   const blePrefix = "RR-";
 
@@ -337,12 +338,12 @@ function App() {
     }
   };
 
-  const connectBle = async () => {
+    const connectBle = async () => {
     console.log('Requesting Bluetooth device...');
     supersedeReconnect();
     manualDisconnectRef.current = false;
     setError('');
-    setStatus('Requesting device...');
+    setStatus('Choose a device...');
 
     let requestObj = {
       acceptAllDevices: true,
@@ -372,16 +373,35 @@ function App() {
       };
     }
 
+    // Only the newest request may act on its result.
+    const myRequest = ++requestIdRef.current;
+    const isCurrent = () => requestIdRef.current === myRequest;
+
+    // Some browsers (e.g. Bluefy) never settle requestDevice() when the picker is dismissed,
+    // so don't leave "Choose a device..." on screen forever.
+    const idleTimer = setTimeout(() => {
+      if (isCurrent() && !connectedRef.current) setStatus('Disconnected');
+    }, 10000);
+
     try {
       const selectedDevice = await navigator.bluetooth.requestDevice(requestObj);
+      clearTimeout(idleTimer);
+      if (!isCurrent()) return;   // a newer Connect tap replaced this request
       await connectToDevice(selectedDevice);
     } catch (err) {
+      clearTimeout(idleTimer);
+      if (!isCurrent()) return;
+      console.error(err.message);
+      if (err.name === 'NotFoundError') {
+        // picker closed without choosing, or nothing matched: not an error
+        setStatus('No device selected');
+        return;
+      }
       if (!navigator.bluetooth || err.message.includes('Web Bluetooth API')) {
         setError("Error: Web Bluetooth not available.");
       } else {
         flashError("There was an error, please try again.");
       }
-      console.error(err.message);
       setStatus('Disconnected');
     }
   };
